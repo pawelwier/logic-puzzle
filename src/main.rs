@@ -198,40 +198,51 @@ fn main() {
         vec![3],
     ];
 
-    let mut result_rows: Vec<RowResults> = vec![];
+    let result_rows: &mut Vec<RowResults> = &mut vec![];
+    let solution_options: &mut Vec<Vec<Vec<Field>>> = &mut vec![];
+    let solution_option: &mut Vec<Vec<Field>> = &mut vec![];
+    let i: i32 = -1; // TODO: fix, start with i: usize = 0 
 
     for row in row_props.iter() {
         let results = RowResults::new(row_size, row.to_owned());
         result_rows.push(results);
     }
 
-    let mut solution_options: Vec<Vec<Vec<Field>>> = vec![];
+    fn add_variants(
+        result_rows: &mut Vec<RowResults>,
+        mut i: i32,
+        column_size: usize,
+        options: &mut Vec<Vec<Vec<Field>>>,
+        option: &mut Vec<Vec<Field>>,
+    ) -> () {
+        i += 1;
 
-    // TODO: make recursive:)
-    // for i in 0..column_size {
-        let (mut one, mut two, mut three, mut four):
-         (Vec<Field>,Vec<Field>,Vec<Field>,Vec<Field>,) 
-         = (vec![],vec![],vec![],vec![]);
-        for r0 in result_rows[0].get_row_variants() {
-            // let mut solution_option: Vec<Vec<Field>> = vec![];
-            // solution_option.push(r0);
-            one = r0;
-            for r1 in result_rows[1].get_row_variants() {
-                // solution_option.push(r1);
-                two = r1;
-                for r2 in result_rows[2].get_row_variants() {
-                    // solution_option.push(r2);
-                    three = r2;
-                    for r3 in result_rows[3].get_row_variants() {
-                        // solution_option.push(r3);
-                        four = r3;
-                        solution_options.push(vec![one.clone(), two.clone(), three.clone(), four.clone()]);
-                    }
-                }
+        if i >= column_size as i32 { return; }
+        
+        let rows: Vec<Vec<Field>> = result_rows[i as usize].get_row_variants();
+
+        for row in rows {
+            if i == (column_size - 1) as i32 {
+                let last_el: Vec<Vec<Field>> = vec![row];
+                let mut option_copy: Vec<Vec<Field>> = option.clone();
+                option_copy.extend_from_slice(&last_el);
+                options.push(option_copy);
+            } else {
+                option.push(row.clone());
+                add_variants(result_rows, i, column_size, options, option);
+                option.pop(); 
             }
         }
-    // }
-    
+    }
+
+    add_variants(
+        result_rows,
+        i,
+        column_size,
+        solution_options,
+        solution_option,
+    );
+
     for op in solution_options.iter() {
         for row in op {
             for f in row {
@@ -241,4 +252,6 @@ fn main() {
         }
         println!("");
     }
+
+    println!("{} options", solution_options.len());
 }
