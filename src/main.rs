@@ -1,3 +1,5 @@
+use std::vec;
+
 #[derive(Clone)]
 enum Field {
     Blank,
@@ -20,18 +22,38 @@ enum RowType {
     ThreeAndMore
 }
 
+enum Dimension {
+    Horizontal,
+    Vertial
+}
+
 struct RowResults {
     row_size: i32,
     props: Vec<i32>
 }
 
+struct PuzzleSchemaDimension {
+    dimension: Dimension,
+    row_size: i32,
+    prop_rows: Vec<Vec<i32>>
+}
+
+struct PuzzleSchema {
+    rows: PuzzleSchemaDimension,
+    columns: PuzzleSchemaDimension
+}
+
 impl RowResults {
     fn new(row_size: i32, props: Vec<i32>) -> RowResults {
-        RowResults { row_size, props }
+        Self { row_size, props }
+    }
+
+    fn get_row_variants(&mut self) -> Vec<Vec<Field>> {
+        get_variants(&self.props, self.row_size)
     }
 
     fn print_results(&mut self) -> () {
-        let results = get_variants(&self.props, self.row_size);
+        let results = self.get_row_variants();
 
         results.into_iter().for_each(|i| {
             i.into_iter().for_each(|i| {
@@ -39,6 +61,18 @@ impl RowResults {
             });
             print!("\n");
         });
+    }
+}
+
+impl PuzzleSchemaDimension {
+    fn new(row_size: i32, prop_rows: Vec<Vec<i32>>, dimension: Dimension) -> PuzzleSchemaDimension {
+        Self { row_size, prop_rows, dimension }
+    }
+}
+
+impl PuzzleSchema {
+    fn new(rows: PuzzleSchemaDimension, columns: PuzzleSchemaDimension) -> PuzzleSchema {
+        Self { rows, columns }
     }
 }
 
@@ -118,8 +152,8 @@ fn get_variants(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
     }
 }
 
-fn main() {
-    let row_size: i32 = 10;
+fn _test_sample_data() -> () {
+        let row_size: i32 = 10;
     // let props_empty: Vec<i32> = vec![];
     // let props_single_1: Vec<i32> = vec![2];
     // let props_single_2: Vec<i32> = vec![8];
@@ -143,4 +177,68 @@ fn main() {
     results_two_1.print_results();
     println!("");
     results_two_2.print_results();
+}
+
+fn main() {
+    let (row_size, column_size) = (6, 4);
+
+    let row_props: Vec<Vec<i32>> = vec![
+        vec![2, 1],
+        vec![3, 1],
+        vec![1, 4],
+        vec![5],
+    ];
+
+    let column_props: Vec<Vec<i32>> = vec![
+        vec![1, 2],
+        vec![2, 1],
+        vec![3],
+        vec![3],
+        vec![2],
+        vec![3],
+    ];
+
+    let mut result_rows: Vec<RowResults> = vec![];
+
+    for row in row_props.iter() {
+        let results = RowResults::new(row_size, row.to_owned());
+        result_rows.push(results);
+    }
+
+    let mut solution_options: Vec<Vec<Vec<Field>>> = vec![];
+
+    // TODO: make recursive:)
+    // for i in 0..column_size {
+        let (mut one, mut two, mut three, mut four):
+         (Vec<Field>,Vec<Field>,Vec<Field>,Vec<Field>,) 
+         = (vec![],vec![],vec![],vec![]);
+        for r0 in result_rows[0].get_row_variants() {
+            // let mut solution_option: Vec<Vec<Field>> = vec![];
+            // solution_option.push(r0);
+            one = r0;
+            for r1 in result_rows[1].get_row_variants() {
+                // solution_option.push(r1);
+                two = r1;
+                for r2 in result_rows[2].get_row_variants() {
+                    // solution_option.push(r2);
+                    three = r2;
+                    for r3 in result_rows[3].get_row_variants() {
+                        // solution_option.push(r3);
+                        four = r3;
+                        solution_options.push(vec![one.clone(), two.clone(), three.clone(), four.clone()]);
+                    }
+                }
+            }
+        }
+    // }
+    
+    for op in solution_options.iter() {
+        for row in op {
+            for f in row {
+                print!("{}", f.display());
+            }
+            println!("");
+        }
+        println!("");
+    }
 }
