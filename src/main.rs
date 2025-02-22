@@ -1,6 +1,8 @@
 use std::vec;
 
-#[derive(Clone)]
+// TODO: break into separate files, use defined structs
+
+#[derive(Clone, Debug, PartialEq)]
 enum Field {
     Blank,
     Filled
@@ -9,9 +11,13 @@ enum Field {
 impl Field {
     fn display(&self) -> String {
         match self {
-            Field::Blank => { "-".to_owned() },
-            Field::Filled => { "X".to_owned() },
+            Field::Blank => { " - ".to_owned() },
+            Field::Filled => { " X ".to_owned() },
         }
+    }
+
+    fn is_filled(&self) -> bool {
+        self == &Field::Filled
     }
 }
 
@@ -152,106 +158,184 @@ fn get_variants(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
     }
 }
 
-fn _test_sample_data() -> () {
-        let row_size: i32 = 10;
-    // let props_empty: Vec<i32> = vec![];
-    // let props_single_1: Vec<i32> = vec![2];
-    // let props_single_2: Vec<i32> = vec![8];
-    let props_two_1: Vec<i32> = vec![2, 4];
-    let props_two_2: Vec<i32> = vec![1, 6];
-
-
-    // let mut results_empty = RowResults::new(row_size, props_empty);
-    // let mut results_single_1 = RowResults::new(row_size, props_single_1);
-    // let mut results_single_2 = RowResults::new(row_size, props_single_2);
-    // let mut results_single_2 = RowResults::new(row_size, props_single_2);
-    let mut results_two_1 = RowResults::new(row_size, props_two_1);
-    let mut results_two_2 = RowResults::new(row_size, props_two_2);
-
-    // results_empty.print_results();
-    // println!("");
-    // results_single_1.print_results();
-    // println!("");
-    // results_single_2.print_results();
-
-    results_two_1.print_results();
-    println!("");
-    results_two_2.print_results();
-}
-
 fn main() {
-    let (row_size, column_size) = (6, 4);
+    // TODO: if sums are not equal, thor Error
+    let (row_props, column_props): (Vec<Vec<i32>>, Vec<Vec<i32>>) = (
+        vec![
+            vec![2, 2],
+            vec![3, 1],
+            vec![1, 4],
+            vec![1, 3],
+        ], 
+        vec![
+            vec![1, 2],
+            vec![2],
+            vec![3],
+            vec![3],
+            vec![1, 2],
+            vec![3],
+        ]
+    );
 
-    let row_props: Vec<Vec<i32>> = vec![
-        vec![2, 1],
-        vec![3, 1],
-        vec![1, 4],
-        vec![5],
-    ];
-
-    let column_props: Vec<Vec<i32>> = vec![
-        vec![1, 2],
-        vec![2, 1],
-        vec![3],
-        vec![3],
-        vec![2],
-        vec![3],
-    ];
+    let (row_size, column_size) = (column_props.len() as i32, row_props.len() as i32);
 
     let result_rows: &mut Vec<RowResults> = &mut vec![];
     let solution_options: &mut Vec<Vec<Vec<Field>>> = &mut vec![];
     let solution_option: &mut Vec<Vec<Field>> = &mut vec![];
-    let i: i32 = -1; // TODO: fix, start with i: usize = 0 
+    let i: i32 = -1; // TODO: fix, start with i: usize = 0
+    
+    let result_columns: &mut Vec<RowResults> = &mut vec![];
+    let column_options: &mut Vec<Vec<Vec<Field>>> = &mut vec![];
+    let column_option: &mut Vec<Vec<Field>> = &mut vec![];
+    let i_col: i32 = -1; // TODO: fix, start with i: usize = 0
 
     for row in row_props.iter() {
         let results = RowResults::new(row_size, row.to_owned());
         result_rows.push(results);
     }
 
+    for column in column_props.iter() {
+        let results = RowResults::new(column_size, column.to_owned());
+        result_columns.push(results);
+    }
+
     fn add_variants(
-        result_rows: &mut Vec<RowResults>,
+        data_rows: &mut Vec<RowResults>,
         mut i: i32,
-        column_size: usize,
+        size: usize,
         options: &mut Vec<Vec<Vec<Field>>>,
         option: &mut Vec<Vec<Field>>,
     ) -> () {
         i += 1;
 
-        if i >= column_size as i32 { return; }
+        if i >= size as i32 { return; }
         
-        let rows: Vec<Vec<Field>> = result_rows[i as usize].get_row_variants();
+        let rows: Vec<Vec<Field>> = data_rows[i as usize].get_row_variants();
 
         for row in rows {
-            if i == (column_size - 1) as i32 {
+            if i == (size - 1) as i32 {
                 let last_el: Vec<Vec<Field>> = vec![row];
                 let mut option_copy: Vec<Vec<Field>> = option.clone();
                 option_copy.extend_from_slice(&last_el);
                 options.push(option_copy);
             } else {
                 option.push(row.clone());
-                add_variants(result_rows, i, column_size, options, option);
+                add_variants(data_rows, i, size, options, option);
                 option.pop(); 
             }
         }
     }
 
+    /*
+        Line by line, map puzzle fields into vec of bools (Field::Filled = true)
+        args:
+        [
+            [Field::Filled, Field::Filled, Field::Blank, Field::Blank],
+            [Field::Filled, Field::Blank, Field::Filled, Field::Filled],
+        ]
+        return:
+        [true, true, false, false, true, false, true, true]
+    */
+    fn map_puzzle_row_fields(fields: Vec<Vec<Field>>) -> Vec<bool> {
+        fields.into_iter().flatten().map(|field| { field.is_filled() }).collect()
+    }
+
+    /*
+        args:
+        [
+            [1, 5]
+            [2, 6]
+            [3, 7]
+            [4, 8]
+        ]
+        return:
+        [
+            [1, 2, 3, 4],
+            [5, 6, 7, 8]
+        ]
+    */
+    fn map_puzzle_columns_to_rows(fields: Vec<Vec<Field>>) -> Vec<Vec<Field>> {
+        let col_count = fields[0].len();
+        let mut mapped_rows: Vec<Vec<Field>> = vec![];
+        for i in 0..col_count {
+            let mut mapped_row: Vec<Field> = vec![];
+            fields.iter().for_each(|row| { mapped_row.push(row[i].clone()); });
+            mapped_rows.push(mapped_row);
+        }
+        mapped_rows
+    }
+
+    fn map_puzzle_column_fields(fields: Vec<Vec<Field>>) -> Vec<bool> {
+        map_puzzle_row_fields(map_puzzle_columns_to_rows(fields))
+    }
+
+    /* compare two rows of bools, return matching one or None */
+    fn get_matching_solution(rows: Vec<bool>, columns: Vec<bool>) -> Option<Vec<bool>> {
+        // TODO: allow for multiple correct solutions
+        let matching = rows.iter().zip(&columns).filter(|&(row_val, col_val)| row_val == col_val).count();
+        if matching == rows.len() {
+            Some(rows)
+        } else {
+            None
+        }
+    }
+
+    fn map_bools_to_fields(values: Vec<bool>, row_count: usize, column_count: usize) -> Vec<Vec<Field>> {
+        // TODO: if row_count * column_count != values, throw Error
+        let mut puzzle_schema: Vec<Vec<bool>> = vec![];
+            for i in 0..row_count {
+                let mapped_row = &values[i * column_count..column_count + i * column_count];
+                puzzle_schema.push(mapped_row.to_vec());
+            }
+
+        puzzle_schema.iter().map(|row| {
+            row.iter().map(|el| { if *el { Field::Filled } else { Field::Blank } }).collect()
+        }).collect()
+    }
+
+    // TODO: break into 2 functions
+    fn display_results(fields: Vec<Vec<Field>>) -> () {
+        println!("");
+        let _ = fields.iter().for_each(|row| {
+            let _ = row.iter().for_each(|el| {
+                print!("{}", el.display());
+            });
+            println!("");
+        });
+        println!("");
+    }
+
     add_variants(
         result_rows,
         i,
-        column_size,
+        column_size as usize,
         solution_options,
         solution_option,
     );
 
-    for op in solution_options.iter() {
-        for row in op {
-            for f in row {
-                print!("{}", f.display());
-            }
-            println!("");
-        }
-        println!("");
-    }
+    add_variants(
+        result_columns,
+        i_col,
+        row_size as usize,
+        column_options,
+        column_option,
+    );
 
-    println!("{} options", solution_options.len());
+    for solution in solution_options.iter() {
+        for columns in column_options.iter() {
+
+            let matching_solution = get_matching_solution(
+                map_puzzle_row_fields(solution.to_vec()),
+                map_puzzle_column_fields(columns.to_vec()),
+            );
+
+            match matching_solution {
+                Some(value) => {
+                    let fields = map_bools_to_fields(value, column_size as usize, row_size as usize);
+                    display_results(fields);
+                },
+                None => {}
+            }
+        }
+    }
 }
