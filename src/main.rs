@@ -1,4 +1,7 @@
 use std::vec;
+use puzzle::PuzzleSchema;
+
+pub mod puzzle;
 
 // TODO: break into separate files, use defined structs
 
@@ -28,29 +31,13 @@ enum RowType {
     ThreeAndMore
 }
 
-enum Dimension {
-    Horizontal,
-    Vertial
-}
-
 struct RowResults {
-    row_size: i32,
-    props: Vec<i32>
-}
-
-struct PuzzleSchemaDimension {
-    dimension: Dimension,
-    row_size: i32,
-    prop_rows: Vec<Vec<i32>>
-}
-
-struct PuzzleSchema {
-    rows: PuzzleSchemaDimension,
-    columns: PuzzleSchemaDimension
+    row_size: usize,
+    props: Vec<usize>
 }
 
 impl RowResults {
-    fn new(row_size: i32, props: Vec<i32>) -> RowResults {
+    fn new(row_size: usize, props: Vec<usize>) -> RowResults {
         Self { row_size, props }
     }
 
@@ -69,20 +56,7 @@ impl RowResults {
         });
     }
 }
-
-impl PuzzleSchemaDimension {
-    fn new(row_size: i32, prop_rows: Vec<Vec<i32>>, dimension: Dimension) -> PuzzleSchemaDimension {
-        Self { row_size, prop_rows, dimension }
-    }
-}
-
-impl PuzzleSchema {
-    fn new(rows: PuzzleSchemaDimension, columns: PuzzleSchemaDimension) -> PuzzleSchema {
-        Self { rows, columns }
-    }
-}
-
-fn get_props_type(props: &Vec<i32>) -> RowType {
+fn get_props_type(props: &Vec<usize>) -> RowType {
     let prop_count = props.len();
 
     match prop_count {
@@ -93,19 +67,19 @@ fn get_props_type(props: &Vec<i32>) -> RowType {
     }
 }
 
-fn get_empty_row(row_size: i32) -> Vec<Vec<Field>> {
+fn get_empty_row(row_size: usize) -> Vec<Vec<Field>> {
     let empty_option = vec![Field::Blank; row_size as usize];
     vec![empty_option; 1]
 }
 
-fn get_variants_one_prop(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
+fn get_variants_one_prop(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
     let single_prop = props[0];
-    let empty_spaces = row_size - single_prop;
+    let empty_spaces = row_size - single_prop as usize;
     let mut variants: Vec<Vec<Field>> = vec![];
 
     for i in 0..=empty_spaces {
         let mut option: Vec<Vec<Field>> = vec![];
-        option.push(vec![Field::Blank; i as usize]);
+        option.push(vec![Field::Blank; i]);
         option.push(vec![Field::Filled; single_prop as usize]);
         option.push(vec![Field::Blank; (empty_spaces - i) as usize]);
 
@@ -115,7 +89,7 @@ fn get_variants_one_prop(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
     variants
 }
 
-fn get_variants_two_props(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
+fn get_variants_two_props(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
     let (first, second) = (props[0], props[1]);
     let mut variants: Vec<Vec<Field>> = vec![];
     let first_prop_max_index = row_size - (first + second + 1);
@@ -138,7 +112,7 @@ fn get_variants_two_props(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
     variants
 }
 
-fn get_variants_three_and_more_props(_props: &Vec<i32>, _row_size: i32) -> Vec<Vec<Field>> {
+fn get_variants_three_and_more_props(_props: &Vec<usize>, _row_size: usize) -> Vec<Vec<Field>> {
     let variants: Vec<Vec<Field>> = vec![];
 
     // TODO: add logic (with recurrent get_variants_two_props?)
@@ -146,7 +120,7 @@ fn get_variants_three_and_more_props(_props: &Vec<i32>, _row_size: i32) -> Vec<V
     variants
 }
 
-fn get_variants(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
+fn get_variants(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
     // TODO: if props + spaces sum > row_size: throw Error
     let props_type = get_props_type(props);
 
@@ -159,8 +133,8 @@ fn get_variants(props: &Vec<i32>, row_size: i32) -> Vec<Vec<Field>> {
 }
 
 fn main() {
-    // TODO: if sums are not equal, thor Error
-    let (row_props, column_props): (Vec<Vec<i32>>, Vec<Vec<i32>>) = (
+    // TODO: if sums are not equal, throw Error
+    let (row_props, column_props): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (
         vec![
             vec![2, 2],
             vec![3, 1],
@@ -177,7 +151,8 @@ fn main() {
         ]
     );
 
-    let (row_size, column_size) = (column_props.len() as i32, row_props.len() as i32);
+    let puzzle_schema: PuzzleSchema = PuzzleSchema::new(&column_props, &row_props);
+    let (row_size, column_size) = puzzle_schema.get_size();
 
     let result_rows: &mut Vec<RowResults> = &mut vec![];
     let solution_options: &mut Vec<Vec<Vec<Field>>> = &mut vec![];
@@ -189,7 +164,7 @@ fn main() {
     let column_option: &mut Vec<Vec<Field>> = &mut vec![];
     let i_col: i32 = -1; // TODO: fix, start with i: usize = 0
 
-    for row in row_props.iter() {
+    for row in row_props.clone().iter() {
         let results = RowResults::new(row_size, row.to_owned());
         result_rows.push(results);
     }
