@@ -44,17 +44,6 @@ impl RowResults {
     fn get_row_variants(&mut self) -> Vec<Vec<Field>> {
         get_variants(&self.props, self.row_size)
     }
-
-    fn print_results(&mut self) -> () {
-        let results = self.get_row_variants();
-
-        results.into_iter().for_each(|i| {
-            i.into_iter().for_each(|i| {
-                print!("{}", i.display());
-            });
-            print!("\n");
-        });
-    }
 }
 fn get_props_type(props: &Vec<usize>) -> RowType {
     let prop_count = props.len();
@@ -121,7 +110,6 @@ fn get_variants_three_and_more_props(_props: &Vec<usize>, _row_size: usize) -> V
 }
 
 fn get_variants(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
-    // TODO: if props + spaces sum > row_size: throw Error
     let props_type = get_props_type(props);
 
     match props_type {
@@ -133,7 +121,6 @@ fn get_variants(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
 }
 
 fn main() {
-    // TODO: if sums are not equal, throw Error
     let (row_props, column_props): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (
         vec![
             vec![2, 2],
@@ -150,19 +137,21 @@ fn main() {
             vec![3],
         ]
     );
-
     let puzzle_schema: PuzzleSchema = PuzzleSchema::new(&column_props, &row_props);
+    if !puzzle_schema.is_props_valid() {
+        panic!("Invalid props.")
+    }
     let (row_size, column_size) = puzzle_schema.get_size();
 
     let result_rows: &mut Vec<RowResults> = &mut vec![];
     let solution_options: &mut Vec<Vec<Vec<Field>>> = &mut vec![];
     let solution_option: &mut Vec<Vec<Field>> = &mut vec![];
-    let i: i32 = -1; // TODO: fix, start with i: usize = 0
+    let i: usize = 0;
     
     let result_columns: &mut Vec<RowResults> = &mut vec![];
     let column_options: &mut Vec<Vec<Vec<Field>>> = &mut vec![];
     let column_option: &mut Vec<Vec<Field>> = &mut vec![];
-    let i_col: i32 = -1; // TODO: fix, start with i: usize = 0
+    let i_col: usize = 0;
 
     for row in row_props.clone().iter() {
         let results = RowResults::new(row_size, row.to_owned());
@@ -176,26 +165,27 @@ fn main() {
 
     fn add_variants(
         data_rows: &mut Vec<RowResults>,
-        mut i: i32,
+        mut i: usize,
         size: usize,
         options: &mut Vec<Vec<Vec<Field>>>,
         option: &mut Vec<Vec<Field>>,
+        update_index: bool,
     ) -> () {
-        i += 1;
+        if update_index { i += 1; }
 
-        if i >= size as i32 { return; }
+        if i >= size { return; }
         
         let rows: Vec<Vec<Field>> = data_rows[i as usize].get_row_variants();
 
         for row in rows {
-            if i == (size - 1) as i32 {
+            if i == size - 1 {
                 let last_el: Vec<Vec<Field>> = vec![row];
                 let mut option_copy: Vec<Vec<Field>> = option.clone();
                 option_copy.extend_from_slice(&last_el);
                 options.push(option_copy);
             } else {
                 option.push(row.clone());
-                add_variants(data_rows, i, size, options, option);
+                add_variants(data_rows, i, size, options, option, true);
                 option.pop(); 
             }
         }
@@ -247,7 +237,12 @@ fn main() {
     /* compare two rows of bools, return matching one or None */
     fn get_matching_solution(rows: Vec<bool>, columns: Vec<bool>) -> Option<Vec<bool>> {
         // TODO: allow for multiple correct solutions
-        let matching = rows.iter().zip(&columns).filter(|&(row_val, col_val)| row_val == col_val).count();
+        let matching = rows
+            .iter()
+            .zip(&columns)
+            .filter(|&(row_val, col_val)| row_val == col_val)
+            .count();
+
         if matching == rows.len() {
             Some(rows)
         } else {
@@ -256,7 +251,10 @@ fn main() {
     }
 
     fn map_bools_to_fields(values: Vec<bool>, row_count: usize, column_count: usize) -> Vec<Vec<Field>> {
-        // TODO: if row_count * column_count != values, throw Error
+        if row_count * column_count != values.len() {
+            panic!("Error mapping values to fields. Sums do not match")
+        }
+
         let mut puzzle_schema: Vec<Vec<bool>> = vec![];
             for i in 0..row_count {
                 let mapped_row = &values[i * column_count..column_count + i * column_count];
@@ -268,15 +266,20 @@ fn main() {
         }).collect()
     }
 
-    // TODO: break into 2 functions
     fn display_results(fields: Vec<Vec<Field>>) -> () {
         println!("");
-        let _ = fields.iter().for_each(|row| {
-            let _ = row.iter().for_each(|el| {
-                print!("{}", el.display());
-            });
-            println!("");
-        });
+        let _ = fields
+            .iter()
+            .for_each(|row| {
+                let _ = row
+                    .iter()
+                    .for_each(|el| {
+                        print!("{}", el.display());
+                    }
+                );
+                println!("");
+            }
+        );
         println!("");
     }
 
@@ -286,6 +289,7 @@ fn main() {
         column_size as usize,
         solution_options,
         solution_option,
+        false
     );
 
     add_variants(
@@ -294,6 +298,7 @@ fn main() {
         row_size as usize,
         column_options,
         column_option,
+        false
     );
 
     for solution in solution_options.iter() {
@@ -306,7 +311,11 @@ fn main() {
 
             match matching_solution {
                 Some(value) => {
-                    let fields = map_bools_to_fields(value, column_size as usize, row_size as usize);
+                    let fields = map_bools_to_fields(
+                        value,
+                        column_size as usize,
+                        row_size as usize
+                    );
                     display_results(fields);
                 },
                 None => {}

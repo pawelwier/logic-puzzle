@@ -1,3 +1,9 @@
+use helpers::{
+    get_prop_sum, is_any_props_len_invalid
+};
+
+pub mod helpers;
+
 enum Dimension {
     Horizontal,
     Vertial
@@ -33,6 +39,14 @@ impl PuzzleSchema {
                 dimension: Dimension::Vertial
             },
         }
+    }
+
+    pub fn is_props_valid(&self) -> bool {
+        let prop_sums_match = get_prop_sum(&self.columns.props) == get_prop_sum(&self.rows.props);
+        let is_all_row_props_len_valid = !is_any_props_len_invalid(&self.rows.props, self.rows.size);
+        let is_all_col_props_len_valid = !is_any_props_len_invalid(&self.columns.props, self.columns.size);
+
+        prop_sums_match && is_all_row_props_len_valid && is_all_col_props_len_valid
     }
 
     pub fn get_size(&self) -> (usize, usize) {
