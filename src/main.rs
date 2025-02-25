@@ -44,6 +44,18 @@ impl RowResults {
     fn get_row_variants(&mut self) -> Vec<Vec<Field>> {
         get_variants(&self.props, self.row_size)
     }
+
+
+    fn print_results(&mut self) -> () {
+        let results = self.get_row_variants();
+
+        results.into_iter().for_each(|i| {
+            i.into_iter().for_each(|i| {
+                print!("{}", i.display());
+            });
+            print!("\n");
+        });
+    }
 }
 fn get_props_type(props: &Vec<usize>) -> RowType {
     let prop_count = props.len();
@@ -72,7 +84,12 @@ fn get_variants_one_prop(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>>
         option.push(vec![Field::Filled; single_prop as usize]);
         option.push(vec![Field::Blank; (empty_spaces - i) as usize]);
 
-        variants.push(option.into_iter().flatten().collect());
+        variants.push(
+            option
+                .into_iter()
+                .flatten()
+                .collect()
+        );
     };
 
     variants
@@ -101,13 +118,48 @@ fn get_variants_two_props(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>
     variants
 }
 
-fn get_variants_three_and_more_props(_props: &Vec<usize>, _row_size: usize) -> Vec<Vec<Field>> {
-    let variants: Vec<Vec<Field>> = vec![];
+// TODO: fix and refactor
+// 1. additional spaces can be divided between slots if > 1 
+// 2. break into separate functions
+fn get_variants_three_and_more_props(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
+    let mut variants: Vec<Vec<Field>> = vec![];
+    let prop_sum: usize = props.iter().sum();
+    let spaces_min_sum = props.len() - 1; // at least one field between each group of props
+    let first_prop_max_index = row_size - prop_sum - spaces_min_sum;
 
-    // TODO: add logic (with recurrent get_variants_two_props?)
+    for first_index in 0..=first_prop_max_index {
+        let mut spaces = props.len();
+        if first_index == first_prop_max_index { spaces = 1 };
+        for space in 0..spaces {
+            let mut remaining_spaces = first_prop_max_index - first_index;
+            let mut option: Vec<Vec<Field>> = vec![];
+            option.push(vec![Field::Blank; first_index]);
+            for (i, prop) in props.iter().enumerate() {
+                option.push(vec![Field::Filled; *prop]);
+                if i < props.len() -1 {
+                    let mut add_value = 0;
+                    if i == space {
+                        add_value += remaining_spaces;  
+                        remaining_spaces = 0;
+                    };
+
+                    option.push(vec![Field::Blank; 1 + add_value]);
+                }
+            };
+            option.push(vec![Field::Blank; remaining_spaces]);
+            variants.push(option.into_iter().flatten().collect());
+        };
+    }
 
     variants
 }
+
+// fn try_sample() -> () {
+//     let row_size: usize = 15;
+//     let props_three: Vec<usize> = vec![1, 3, 2, 3];
+//     let mut results_three = RowResults::new(row_size, props_three);
+//     results_three.print_results();
+// }
 
 fn get_variants(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
     let props_type = get_props_type(props);
@@ -121,20 +173,26 @@ fn get_variants(props: &Vec<usize>, row_size: usize) -> Vec<Vec<Field>> {
 }
 
 fn main() {
+    // try_sample();
+
     let (row_props, column_props): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (
         vec![
-            vec![2, 2],
-            vec![3, 1],
-            vec![1, 4],
-            vec![1, 3],
+            vec![5],
+            vec![4, 3],
+            vec![3, 5],
+            vec![1, 3, 2]
         ], 
         vec![
+            vec![1],
+            vec![2],
+            vec![4],
+            vec![2],
+            vec![2, 1],
             vec![1, 2],
+            vec![4],
             vec![2],
             vec![3],
-            vec![3],
-            vec![1, 2],
-            vec![3],
+            vec![2],
         ]
     );
     let puzzle_schema: PuzzleSchema = PuzzleSchema::new(&column_props, &row_props);
@@ -300,6 +358,12 @@ fn main() {
         column_option,
         false
     );
+
+    println!("\n");
+    println!("column variants: {}", column_options.len());
+    println!("row variants: {}", solution_options.len());
+    println!("total options: {}", column_options.len() * solution_options.len());
+
 
     for solution in solution_options.iter() {
         for columns in column_options.iter() {
