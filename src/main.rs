@@ -1,4 +1,6 @@
 use std::vec;
+use chrono::{DateTime, Utc};
+
 use puzzle::PuzzleSchema;
 
 pub mod puzzle;
@@ -177,22 +179,23 @@ fn main() {
 
     let (row_props, column_props): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (
         vec![
-            vec![5],
-            vec![4, 3],
-            vec![3, 5],
-            vec![1, 3, 2]
+            vec![1, 4],
+            vec![3, 2, 1],
+            vec![2, 5],
+            vec![3, 3, 2],
+            vec![2, 2, 2, 1]
         ], 
         vec![
-            vec![1],
-            vec![2],
-            vec![4],
-            vec![2],
-            vec![2, 1],
             vec![1, 2],
-            vec![4],
-            vec![2],
             vec![3],
+            vec![3],
+            vec![2, 1],
+            vec![2, 2],
+            vec![1, 2],
+            vec![5],
+            vec![2, 1],
             vec![2],
+            vec![4],
         ]
     );
     let puzzle_schema: PuzzleSchema = PuzzleSchema::new(&column_props, &row_props);
@@ -259,7 +262,7 @@ fn main() {
         return:
         [true, true, false, false, true, false, true, true]
     */
-    fn map_puzzle_row_fields(fields: Vec<Vec<Field>>) -> Vec<bool> {
+    fn map_puzzle_row_fields(fields: &Vec<Vec<Field>>) -> Vec<bool> {
         fields.into_iter().flatten().map(|field| { field.is_filled() }).collect()
     }
 
@@ -277,7 +280,7 @@ fn main() {
             [5, 6, 7, 8]
         ]
     */
-    fn map_puzzle_columns_to_rows(fields: Vec<Vec<Field>>) -> Vec<Vec<Field>> {
+    fn map_puzzle_columns_to_rows(fields: &Vec<Vec<Field>>) -> Vec<Vec<Field>> {
         let col_count = fields[0].len();
         let mut mapped_rows: Vec<Vec<Field>> = vec![];
         for i in 0..col_count {
@@ -288,42 +291,28 @@ fn main() {
         mapped_rows
     }
 
-    fn map_puzzle_column_fields(fields: Vec<Vec<Field>>) -> Vec<bool> {
-        map_puzzle_row_fields(map_puzzle_columns_to_rows(fields))
+    fn map_puzzle_column_fields(fields: &Vec<Vec<Field>>) -> Vec<bool> {
+        map_puzzle_row_fields(&map_puzzle_columns_to_rows(fields))
     }
 
-    /* compare two rows of bools, return matching one or None */
-    fn get_matching_solution(rows: Vec<bool>, columns: Vec<bool>) -> Option<Vec<bool>> {
-        // TODO: allow for multiple correct solutions
-        let matching = rows
-            .iter()
-            .zip(&columns)
-            .filter(|&(row_val, col_val)| row_val == col_val)
-            .count();
-
-        if matching == rows.len() {
-            Some(rows)
-        } else {
-            None
-        }
-    }
-
-    fn map_bools_to_fields(values: Vec<bool>, row_count: usize, column_count: usize) -> Vec<Vec<Field>> {
-        if row_count * column_count != values.len() {
-            panic!("Error mapping values to fields. Sums do not match")
-        }
-
-        let mut puzzle_schema: Vec<Vec<bool>> = vec![];
-            for i in 0..row_count {
-                let mapped_row = &values[i * column_count..column_count + i * column_count];
-                puzzle_schema.push(mapped_row.to_vec());
+    /*
+        fn map_bools_to_fields(values: Vec<bool>, row_count: usize, column_count: usize) -> Vec<Vec<Field>> {
+            if row_count * column_count != values.len() {
+                panic!("Error mapping values to fields. Sums do not match")
             }
 
-        puzzle_schema.iter().map(|row| {
-            row.iter().map(|el| { if *el { Field::Filled } else { Field::Blank } }).collect()
-        }).collect()
-    }
+            let mut puzzle_schema: Vec<Vec<bool>> = vec![];
+                for i in 0..row_count {
+                    let mapped_row = &values[i * column_count..column_count + i * column_count];
+                    puzzle_schema.push(mapped_row.to_vec());
+                }
 
+            puzzle_schema.iter().map(|row| {
+                row.iter().map(|el| { if *el { Field::Filled } else { Field::Blank } }).collect()
+            }).collect()
+        }
+    */
+    
     fn display_results(fields: Vec<Vec<Field>>) -> () {
         println!("");
         let _ = fields
@@ -365,24 +354,18 @@ fn main() {
     println!("total options: {}", column_options.len() * solution_options.len());
 
 
-    for solution in solution_options.iter() {
+    let before = Utc::now().timestamp();
+
+    for rows in solution_options.iter() {
         for columns in column_options.iter() {
-
-            let matching_solution = get_matching_solution(
-                map_puzzle_row_fields(solution.to_vec()),
-                map_puzzle_column_fields(columns.to_vec()),
-            );
-
-            match matching_solution {
-                Some(value) => {
-                    let fields = map_bools_to_fields(
-                        value,
-                        column_size as usize,
-                        row_size as usize
-                    );
-                    display_results(fields);
-                },
-                None => {}
+            let mapped_row = map_puzzle_row_fields(rows);
+            let mapped_col = map_puzzle_column_fields(columns);
+            
+            if mapped_row == mapped_col {
+                display_results(rows.to_vec());
+                let after = Utc::now().timestamp();
+                println!("Found solution in {}s", after - before);
+                return;
             }
         }
     }
